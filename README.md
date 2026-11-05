@@ -13,3 +13,5 @@ the Czech source is public and this repository only publishes the output.
 - Build: hourly and on every push to this repository
 - Manual run: Actions → Build EN from CZ source → Run workflow
 - Czech edition: https://www.localinference.cz
+
+<!-- build trigger -->
