@@ -15,3 +15,4 @@ the Czech source is public and this repository only publishes the output.
 - Czech edition: https://www.localinference.cz
 
 <!-- build trigger -->
+<!-- deploy 2026-11-05T13:52:15.9532943+01:00 -->
