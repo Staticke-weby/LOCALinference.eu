@@ -5,6 +5,8 @@ name: Build EN from CZ source
 # .cz repo, postaví sites/eu a nasadí výstup na vlastní Pages.
 
 on:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 4 * * *'
   workflow_dispatch:
