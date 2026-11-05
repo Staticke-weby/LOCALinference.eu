@@ -1,0 +1,61 @@
+name: Build EN from CZ source
+
+# EN zdroj zůstává v repu LOCALinference.cz. Tento repo obsahuje jen
+# workflow a CNAME; žádný cross-repo token. Workflow si stáhne veřejný
+# .cz repo, postaví sites/eu a nasadí výstup na vlastní Pages.
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-eu
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout CZ source
+        uses: actions/checkout@v5
+        with:
+          repository: Staticke-weby/LOCALinference.cz
+          path: src
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/package-lock.json
+
+      - run: npm ci
+        working-directory: src
+
+      - run: npm ci
+        working-directory: src/sites/eu
+
+      - name: Build EN
+        working-directory: src/sites/eu
+        run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: src/sites/eu/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
