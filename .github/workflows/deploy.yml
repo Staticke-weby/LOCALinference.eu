@@ -3,6 +3,11 @@ name: Build EN from CZ source
 # EN zdroj zůstává v repu LOCALinference.cz. Tento repo obsahuje jen
 # workflow a CNAME; žádný cross-repo token. Workflow si stáhne veřejný
 # .cz repo, postaví sites/eu a nasadí výstup na vlastní Pages.
+#
+# Hodinový cron je jen pojistka: než se cokoli postaví, workflow zjistí
+# HEAD .cz a porovná ho s posledním nasazeným SHA. Když se nic nezměnilo,
+# build i deploy se přeskočí. Ruční spuštění (workflow_dispatch) stav
+# ignoruje a nasadí vždy.
 
 on:
   push:
@@ -13,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
   pages: write
   id-token: write
 
@@ -21,7 +27,41 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.cmp.outputs.changed }}
+      sha: ${{ steps.cz.outputs.sha }}
+    steps:
+      - name: CZ HEAD
+        id: cz
+        run: |
+          sha="$(git ls-remote https://github.com/Staticke-weby/LOCALinference.cz refs/heads/main | cut -f1)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "CZ main: $sha"
+
+      - name: Restore last deployed SHA
+        uses: actions/cache/restore@v4
+        with:
+          path: .cz-sha
+          key: cz-sha-${{ steps.cz.outputs.sha }}
+          restore-keys: |
+            cz-sha-
+
+      - name: Compare
+        id: cmp
+        run: |
+          prev="$(cat .cz-sha 2>/dev/null || true)"
+          echo "previous=$prev current=${{ steps.cz.outputs.sha }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$prev" != "${{ steps.cz.outputs.sha }}" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout CZ source
@@ -53,7 +93,8 @@ jobs:
           path: src/sites/eu/dist
 
   deploy:
-    needs: build
+    needs: [check, build]
+    if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment:
@@ -64,3 +105,14 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           timeout: 1200000
+
+      - name: Record deployed CZ SHA
+        if: success()
+        run: echo "${{ needs.check.outputs.sha }}" > .cz-sha
+
+      - name: Save deployed SHA
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: .cz-sha
+          key: cz-sha-${{ needs.check.outputs.sha }}
