@@ -10,8 +10,11 @@ and deploys the result to GitHub Pages. There is no cross-repo token:
 the Czech source is public and this repository only publishes the output.
 
 - Custom domain: `www.localinference.eu`
-- Build: hourly and on every push to this repository
-- Manual run: Actions → Build EN from CZ source → Run workflow
+- Build: on every push to this repository, hourly, and manually
+- **Skip:** the hourly run compares CZ `main` HEAD with the last deployed
+  SHA. If nothing changed, build and deploy are skipped; the job takes
+  seconds instead of rebuilding the same site.
+- Manual run: Actions → Build EN from CZ source → Run workflow (always deploys)
 - Czech edition: https://www.localinference.cz
 
 <!-- build trigger -->
